@@ -118,12 +118,7 @@ export function ConsolePage() {
   const [isConnected, setIsConnected] = useState(false);
   const [canPushToTalk, setCanPushToTalk] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-  const [memoryKv, setMemoryKv] = useState<{ [key: string]: any }>({});
-  const [coords, setCoords] = useState<Coordinates | null>({
-    lat: 37.775593,
-    lng: -122.418137,
-  });
-  const [marker, setMarker] = useState<Coordinates | null>(null);
+  const [notes, setNotes] = useState<{ [key: string]: any }>({});
 
   /**
    * Utility for formatting the timing of logs
@@ -201,12 +196,7 @@ export function ConsolePage() {
     setIsConnected(false);
     setRealtimeEvents([]);
     setItems([]);
-    setMemoryKv({});
-    setCoords({
-      lat: 37.775593,
-      lng: -122.418137,
-    });
-    setMarker(null);
+    setNotes({});
 
     const client = clientRef.current;
     client.disconnect();
@@ -381,77 +371,119 @@ export function ConsolePage() {
     // Set transcription, otherwise we don't get user transcriptions back
     client.updateSession({ input_audio_transcription: { model: 'whisper-1' } });
 
-    // Add tools
     client.addTool(
       {
-        name: 'set_memory',
-        description: 'Saves important data about the user into memory.',
+        name: 'check_vacancies',
+        description: 'Provides information about current job openings.',
         parameters: {
           type: 'object',
           properties: {
-            key: {
+            department: {
               type: 'string',
               description:
-                'The key of the memory value. Always use lowercase and underscores, no other characters.',
-            },
-            value: {
-              type: 'string',
-              description: 'Value can be anything represented as a string',
+                'The department to check for vacancies, e.g., "Engineering", "HR".',
             },
           },
-          required: ['key', 'value'],
+          required: ['department'],
         },
       },
-      async ({ key, value }: { [key: string]: any }) => {
-        setMemoryKv((memoryKv) => {
-          const newKv = { ...memoryKv };
-          newKv[key] = value;
-          return newKv;
-        });
-        return { ok: true };
+      async ({ department }: { department: string }) => {
+        // Stub implementation for check_vacancies
+        return { ok: true, data: [] };
       }
     );
+
     client.addTool(
       {
-        name: 'get_weather',
-        description:
-          'Retrieves the weather for a given lat, lng coordinate pair. Specify a label for the location.',
+        name: 'get_office_hours',
+        description: 'Retrieves the office hours for a specified department.',
         parameters: {
           type: 'object',
           properties: {
-            lat: {
-              type: 'number',
-              description: 'Latitude',
+            department: {
+              type: 'string',
+              description: 'The department to get office hours for.',
             },
-            lng: {
-              type: 'number',
-              description: 'Longitude',
+          },
+          required: ['department'],
+        },
+      },
+      async ({ department }: { department: string }) => {
+        // Stub implementation for get_office_hours
+        return { ok: true, data: '' };
+      }
+    );
+
+    client.addTool(
+      {
+        name: 'call_human_manager',
+        description: 'Initiates a call to a human manager for assistance.',
+        parameters: {
+          type: 'object',
+          properties: {
+            managerId: {
+              type: 'string',
+              description: 'The ID of the manager to call.',
+            },
+          },
+          required: ['managerId'],
+        },
+      },
+      async ({ managerId }: { managerId: string }) => {
+        // Stub implementation for call_human_manager
+        return { ok: true, status: 'stubbed' };
+      }
+    );
+
+    client.addTool(
+      {
+        name: 'maintenance_requests',
+        description: 'Allows users to submit maintenance requests.',
+        parameters: {
+          type: 'object',
+          properties: {
+            issue: {
+              type: 'string',
+              description: 'Description of the maintenance issue.',
             },
             location: {
               type: 'string',
-              description: 'Name of the location',
+              description: 'Location of the issue.',
             },
           },
-          required: ['lat', 'lng', 'location'],
+          required: ['issue', 'location'],
         },
       },
-      async ({ lat, lng, location }: { [key: string]: any }) => {
-        setMarker({ lat, lng, location });
-        setCoords({ lat, lng, location });
-        const result = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m`
-        );
-        const json = await result.json();
-        const temperature = {
-          value: json.current.temperature_2m as number,
-          units: json.current_units.temperature_2m as string,
-        };
-        const wind_speed = {
-          value: json.current.wind_speed_10m as number,
-          units: json.current_units.wind_speed_10m as string,
-        };
-        setMarker({ lat, lng, location, temperature, wind_speed });
-        return json;
+      async ({ issue, location }: { issue: string; location: string }) => {
+        // Stub implementation for maintenance_requests
+        return { ok: true, requestId: 'stubbed' };
+      }
+    );
+
+    client.addTool(
+      {
+        name: 'access_requests',
+        description:
+          'Handles requests for access to restricted areas or resources.',
+        parameters: {
+          type: 'object',
+          properties: {
+            resource: {
+              type: 'string',
+              description:
+                'The resource or area for which access is requested.',
+            },
+            reason: {
+              type: 'string',
+              description: 'Reason for needing access.',
+            },
+          },
+          required: ['resource', 'reason'],
+        },
+      },
+      async ({ resource, reason }: { resource: string; reason: string }) => {
+        // Stub implementation for access_requests
+        return { ok: true, accessStatus: 'stubbed' };
       }
     );
 
@@ -692,36 +724,10 @@ export function ConsolePage() {
           </div>
         </div>
         <div className="content-right">
-          <div className="content-block map">
-            <div className="content-block-title">get_weather()</div>
-            <div className="content-block-title bottom">
-              {marker?.location || 'not yet retrieved'}
-              {!!marker?.temperature && (
-                <>
-                  <br />
-                  🌡️ {marker.temperature.value} {marker.temperature.units}
-                </>
-              )}
-              {!!marker?.wind_speed && (
-                <>
-                  {' '}
-                  🍃 {marker.wind_speed.value} {marker.wind_speed.units}
-                </>
-              )}
-            </div>
-            <div className="content-block-body full">
-              {coords && (
-                <Map
-                  center={[coords.lat, coords.lng]}
-                  location={coords.location}
-                />
-              )}
-            </div>
-          </div>
           <div className="content-block kv">
-            <div className="content-block-title">set_memory()</div>
+            <div className="content-block-title">take_notes()</div>
             <div className="content-block-body content-kv">
-              {JSON.stringify(memoryKv, null, 2)}
+              {JSON.stringify(notes, null, 2)}
             </div>
           </div>
         </div>
